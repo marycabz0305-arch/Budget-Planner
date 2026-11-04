@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Household Budget Planner</title>
+<meta name="description" content="Monthly budget planner for couples: salaries, daily spending, bills, subscriptions and savings.">
+<meta name="theme-color" content="#1b7f79">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column of tidy panels under a sticky month bar; tabs switch Overview / Spending / Bills & Subs / Settings */
+:root{
+  --bg:#f3f6f5; --panel:#ffffff; --ink:#15302c; --muted:#5d7470; --line:#dbe4e2;
+  --me:#e0742b; --me-soft:#fbe6d6; --him:#1b7f79; --him-soft:#d5ecea; --joint:#7a5ac8; --joint-soft:#e9e2f8;
+  --good:#2e8b57; --warn:#c0841a; --bad:#c2413b; --chip:#eef3f2;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1918; --panel:#172423; --ink:#e3eeec; --muted:#93aaa6; --line:#2a3b39;
+  --me:#f0924f; --me-soft:#3a2618; --him:#4cc0b8; --him-soft:#143331; --joint:#a98ef0; --joint-soft:#2a2240;
+  --good:#5cc489; --warn:#e2ad4c; --bad:#ef7a73; --chip:#1f2f2d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1918; --panel:#172423; --ink:#e3eeec; --muted:#93aaa6; --line:#2a3b39;
+  --me:#f0924f; --me-soft:#3a2618; --him:#4cc0b8; --him-soft:#143331; --joint:#a98ef0; --joint-soft:#2a2240;
+  --good:#5cc489; --warn:#e2ad4c; --bad:#ef7a73; --chip:#1f2f2d; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+img{max-width:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:15px;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 48px;display:flex;flex-direction:column;gap:14px}
+.num{font-variant-numeric:tabular-nums}
+h1{font-family:var(--f-display);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.1rem;margin:0}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{justify-content:space-between}
+.month{display:flex;align-items:center;gap:6px}
+.month b{font-family:var(--f-display);font-size:1.05rem;min-width:9.5ch;text-align:center}
+button,select,input{font:inherit;color:inherit}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 12px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--him);border-color:var(--him);color:#fff}
+.btn.sm{padding:4px 9px;font-size:.85rem}
+.btn.icon{padding:5px 10px}
+:focus-visible{outline:2px solid var(--me);outline-offset:2px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:transparent;padding:7px 12px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.person{border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.person.me{background:var(--me-soft)} .person.him{background:var(--him-soft)}
+.person .name{font-weight:700;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.dot.me{background:var(--me)} .dot.him{background:var(--him)} .dot.joint{background:var(--joint)}
+.big{font-family:var(--f-display);font-weight:800;font-size:1.9rem;line-height:1}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:.92rem}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.bar{height:10px;background:var(--chip);border-radius:999px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.label{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.cats{display:flex;flex-direction:column;gap:10px}
+.cat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.cat .bar{grid-column:1/-1}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .main{min-width:0}
+.item .t{font-weight:600;overflow-wrap:anywhere}
+.item .s{font-size:.84rem;color:var(--muted)}
+.amt{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.pill.ok{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.pill.due{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.late{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.pill.me{background:var(--me-soft);color:var(--me)} .pill.him{background:var(--him-soft);color:var(--him)} .pill.joint{background:var(--joint-soft);color:var(--joint)}
+.check{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);background:transparent;cursor:pointer;display:grid;place-items:center;font-weight:800;color:#fff;padding:0}
+.check.on{background:var(--good);border-color:var(--good)}
+form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:8px;align-items:end}
+form.add label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted);font-weight:600;min-width:0}
+input,select{border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:8px 10px;width:100%;min-width:0}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 11px;cursor:pointer;font-size:.85rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.empty{color:var(--muted);font-size:.92rem;padding:8px 0}
+.note{font-size:.84rem;color:var(--muted)}
+.del{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:6px}
+.del:hover{color:var(--bad)}
+.paydays{display:flex;gap:6px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:12px}
+table.cmp{width:100%;border-collapse:collapse;font-size:.92rem;min-width:420px}
+table.cmp th{text-align:right;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.cmp td{text-align:right;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.cmp th:first-child,table.cmp td:first-child{text-align:left;white-space:normal}
+table.cmp tfoot td{font-weight:700;border-bottom:0}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-weight:600;font-size:.9rem;z-index:20}
+.status{font-size:.78rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s ease}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div class="row spread">
+      <h1 id="appTitle">Our Household Budget</h1>
+      <div class="month">
+        <button class="btn icon" id="prev" aria-label="Previous month">‹</button>
+        <b id="mlabel" class="num">—</b>
+        <button class="btn icon" id="next" aria-label="Next month">›</button>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button class="tab" role="tab" data-tab="spend" aria-selected="false">Spending</button>
+      <button class="tab" role="tab" data-tab="bills" aria-selected="false">Weekly, Bills &amp; Subs</button>
+      <button class="tab" role="tab" data-tab="savings" aria-selected="false">Savings</button>
+      <button class="tab" role="tab" data-tab="settings" aria-selected="false">Salaries</button>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section id="v-overview" class="wrapv" style="display:flex;flex-direction:column;gap:14px">
+    <div class="grid2" id="people"></div>
+    <div class="panel">
+      <div class="row spread"><h2>Where the money went</h2><span class="note num" id="totalSpent"></span></div>
+      <div class="cats" id="cats"></div>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>Still to pay this month</h2><span class="note num" id="unpaidTotal"></span></div>
+      <div class="list" id="unpaid"></div>
+    </div>
+    <p class="status" id="status">Connecting…</p>
+  </section>
+
+  <!-- SPENDING -->
+  <section id="v-spend" hidden style="flex-direction:column;gap:14px">
+    <div class="panel">
+      <h2>Log a purchase</h2>
+      <form class="add" id="expForm">
+        <label>What<input id="eNote" placeholder="e.g. Groceries at Puregold" required></label>
+        <label>Amount (₱)<input id="eAmt" type="number" inputmode="decimal" min="0" step="0.01" required></label>
+        <label>Date<input id="eDate" type="date" required></label>
+        <label>Type<select id="eCat">
+          <option value="daily">Daily expense</option>
+          <option value="online">Online order</option>
+          <option value="outside">Bought outside</option>
+        </select></label>
+        <label>Paid by<select id="ePayer"></select></label>
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>Week by week</h2><span class="note">Purchases + weekly expenses paid</span></div>
+      <div class="cats" id="weeks"></div>
+    </div>
+    <div class="panel">
+      <div class="row spread">
+        <h2>This month's purchases</h2>
+        <div class="seg" id="filt">
+          <button aria-pressed="true" data-f="all">All</button>
+          <button aria-pressed="false" data-f="daily">Daily</button>
+          <button aria-pressed="false" data-f="online">Online</button>
+          <button aria-pressed="false" data-f="outside">Outside</button>
+        </div>
+      </div>
+      <div class="list" id="expList"></div>
+    </div>
+  </section>
+
+  <!-- BILLS -->
+  <section id="v-bills" hidden style="flex-direction:column;gap:14px">
+    <div class="panel">
+      <h2>Add a bill or subscription</h2>
+      <form class="add" id="recForm">
+        <label>Name<input id="rName" placeholder="e.g. Meralco, Netflix" required></label>
+        <label>Budget amount (₱)<input id="rAmt" type="number" inputmode="decimal" min="0" step="0.01" required></label>
+        <label>Due day<input id="rDay" type="number" min="1" max="31" value="15" required></label>
+        <label>Kind<select id="rKind"><option value="bill">Monthly bill</option><option value="sub">Online subscription</option></select></label>
+        <label>Paid by<select id="rPayer"></select></label>
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>Add a weekly or biweekly expense</h2>
+      <p class="note">For costs that repeat every week or every 2 weeks, like groceries, gas, fare, baon, allowance or a loan payment.</p>
+      <form class="add" id="wkForm">
+        <label>Name<input id="wName" placeholder="e.g. Weekly groceries" required></label>
+        <label>Amount (₱)<input id="wAmt" type="number" inputmode="decimal" min="0" step="0.01" required></label>
+        <label>How often<select id="wFreq"><option value="weekly">Every week</option><option value="biweekly">Every 2 weeks</option></select></label>
+        <label>Next due date<input id="wStart" type="date" required></label>
+        <label>Paid by<select id="wPayer"></select></label>
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>Weekly &amp; biweekly expenses</h2><span class="note num" id="wkSum"></span></div>
+      <p class="note">Tap a date to mark it as paid.</p>
+      <div class="list" id="wkList"></div>
+    </div>
+    <div class="panel">
+      <h2>Budget vs actual</h2>
+      <p class="note">Bills like electricity and water change every month. When you mark one paid, enter what you really paid and see if it went over budget.</p>
+      <div class="stats" id="cmpStats"></div>
+      <div style="overflow-x:auto" id="cmpTable"></div>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>Monthly bills</h2><span class="note num" id="billSum"></span></div>
+      <div class="list" id="billList"></div>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>Online subscriptions</h2><span class="note num" id="subSum"></span></div>
+      <div class="list" id="subList"></div>
+    </div>
+    <div class="row" id="exRow" hidden><button class="btn sm" id="clearEx">Remove example items</button><span class="note">Items marked “example” are placeholders to show how it works.</span></div>
+  </section>
+
+  <!-- SAVINGS -->
+  <section id="v-savings" hidden style="flex-direction:column;gap:14px">
+    <div class="panel">
+      <div class="row spread"><h2>Our online savings</h2><span class="note num" id="svTotal"></span></div>
+      <div class="list" id="acctList"></div>
+    </div>
+    <div class="panel">
+      <h2>Record a deposit or withdrawal</h2>
+      <form class="add" id="svForm">
+        <label>Account<select id="sAcct" required></select></label>
+        <label>Amount (₱)<input id="sAmt" type="number" inputmode="decimal" min="0" step="0.01" required></label>
+        <label>Type<select id="sType"><option value="in">Deposit</option><option value="out">Withdrawal</option></select></label>
+        <label>Date<input id="sDate" type="date" required></label>
+        <label>Saved by<select id="sPayer"></select></label>
+        <button class="btn primary" type="submit">Save</button>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="row spread"><h2>This month's savings activity</h2><span class="note num" id="svMonth"></span></div>
+      <div class="list" id="svList"></div>
+    </div>
+    <div class="panel">
+      <h2>Add a savings account</h2>
+      <form class="add" id="acctForm">
+        <label>Name<input id="aName" placeholder="e.g. GCash GSave, Maya, SeaBank" required></label>
+        <label>Current balance (₱)<input id="aStart" type="number" inputmode="decimal" min="0" step="0.01" value="0"></label>
+        <label>Goal (₱, optional)<input id="aGoal" type="number" inputmode="decimal" min="0" step="0.01"></label>
+        <button class="btn primary" type="submit">Add account</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="v-settings" hidden style="flex-direction:column;gap:14px">
+    <div class="panel">
+      <div class="row spread"><h2>Salary received this month</h2><span class="note num" id="rcvTotal"></span></div>
+      <p class="note">Pay can change with exchange rates, commissions or performance, so enter what actually came in on each payday. Until you do, the planner uses the usual amount below as an estimate.</p>
+      <div id="payInfo" style="display:flex;flex-direction:column;gap:16px"></div>
+    </div>
+    <div class="panel">
+      <h2>Salary setup</h2>
+      <p class="note">Choose how often each of you gets paid. For weekly and every-2-weeks pay, pick any one past payday as the starting point. Leave the currency blank if you're paid in pesos.</p>
+      <form class="add" id="cfgForm">
+        <label>Planner name<input id="cTitle" maxlength="40"></label>
+        <label>Person 1 name<input id="cMeName"></label>
+        <label>How often paid<select id="cMeFreq"><option value="weekly">Every week</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">15th &amp; 30th</option><option value="monthly">Once a month</option></select></label>
+        <label>Usual pay per payday (₱)<input id="cMePay" type="number" min="0" step="0.01"></label>
+        <label>One payday (date)<input id="cMeAnchor" type="date"></label>
+        <label>Paid in foreign currency?<input id="cMeCur" placeholder="e.g. USD, or blank" maxlength="5"></label>
+        <label>Person 2 name<input id="cHimName"></label>
+        <label>How often paid<select id="cHimFreq"><option value="weekly">Every week</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">15th &amp; 30th</option><option value="monthly">Once a month</option></select></label>
+        <label>Usual pay per payday (₱)<input id="cHimPay" type="number" min="0" step="0.01"></label>
+        <label>One payday (date)<input id="cHimAnchor" type="date"></label>
+        <label>Paid in foreign currency?<input id="cHimCur" placeholder="e.g. USD, or blank" maxlength="5"></label>
+        <button class="btn primary" type="submit">Save</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>Backup</h2>
+      <p class="note">Your data is saved on this phone only, in this browser. Download a backup now and then, and use it to move your data to a new phone or browser. Clearing your browser data erases the planner.</p>
+      <div class="row">
+        <button class="btn primary" id="bkDown" type="button">Download backup</button>
+        <label class="btn" for="bkFile" style="display:inline-block">Restore from backup</label>
+        <input id="bkFile" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="row" id="bkConfirm" hidden style="background:var(--chip);padding:10px;border-radius:10px">
+        <span class="note" style="flex:1 1 200px">Restoring replaces everything in the planner with the backup. Continue?</span>
+        <button class="btn primary sm" id="bkYes" type="button">Replace my data</button>
+        <button class="btn sm" id="bkNo" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const peso = n => "₱" + (Math.round(n*100)/100).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseD = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $ = id => document.getElementById(id);
+
+const today = new Date();
+let view = {y:today.getFullYear(), m:today.getMonth()};
+const ymKey = () => view.y+"-"+pad(view.m+1);
+let tab = "overview", filter = "all";
+
+const DEFAULT_CFG = {title:"Our Household Budget", meName:"Me", hisName:"Partner", mePay:0, hisPay:0, meAnchor:"", hisAnchor:"", meCur:"", hisCur:"", meFreq:"weekly", hisFreq:"biweekly"};
+let received = [];
+const rcvFor = (who, d) => received.find(r => r.who===who && r.date===ymd(d));
+let cfg = {...DEFAULT_CFG}, expenses = [], recurring = [], savings = [], accounts = [];
+let db = null, live = false;
+
+const CAT = {
+  daily:{label:"Daily expenses", color:"var(--me)"},
+  online:{label:"Online orders", color:"var(--joint)"},
+  outside:{label:"Bought outside", color:"var(--warn)"},
+  weekly:{label:"Weekly & biweekly", color:"var(--good)"},
+  bill:{label:"Monthly bills", color:"var(--him)"},
+  sub:{label:"Online subscriptions", color:"var(--bad)"}
+};
+const payerName = p => p==="me"?cfg.meName:p==="him"?cfg.hisName:"Both of us";
+
+function payDates(anchor, step){
+  if(!anchor) return [];
+  const a = parseD(anchor), start = new Date(view.y,view.m,1), end = new Date(view.y,view.m+1,0);
+  const dayMs = 864e5;
+  let k = Math.ceil((start - a)/dayMs/step);
+  const out=[];
+  for(;;k++){ const d=new Date(a.getFullYear(),a.getMonth(),a.getDate()+k*step); if(d>end) break; if(d>=start) out.push(d); }
+  return out;
+}
+
+function paydaysFor(freq, anchor){
+  const last = new Date(view.y,view.m+1,0).getDate();
+  if(freq==="semimonthly") return [new Date(view.y,view.m,15), new Date(view.y,view.m,Math.min(30,last))];
+  if(freq==="monthly"){ if(!anchor) return []; return [new Date(view.y,view.m,Math.min(parseD(anchor).getDate(),last))]; }
+  return payDates(anchor, freq==="biweekly"?14:7);
+}
+const FREQ = {weekly:"weekly", biweekly:"every 2 weeks", semimonthly:"15th & 30th", monthly:"monthly"};
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,1800); }
+
+function monthData(){
+  const key = ymKey();
+  const exp = expenses.filter(e => (e.date||"").startsWith(key));
+  const recPaid = recurring.filter(r => r.paid && r.paid[key]);
+  const spent = {me:0, him:0};
+  const add = (payer, amt) => { if(payer==="joint"){spent.me+=amt/2;spent.him+=amt/2;} else if(spent[payer]!=null) spent[payer]+=amt; };
+  const byCat = {daily:0,online:0,outside:0,weekly:0,bill:0,sub:0};
+  const byCatPerson = {}; for(const c in byCat) byCatPerson[c]={me:0,him:0};
+  exp.forEach(e => { const a=+e.amount||0; add(e.payer,a); byCat[e.cat]=(byCat[e.cat]||0)+a; split(byCatPerson[e.cat],e.payer,a); });
+  recPaid.forEach(r => { if(r.kind==="weekly") return; const a=actualPaid(r,key)||0; add(r.payer,a); byCat[r.kind]+=a; split(byCatPerson[r.kind],r.payer,a); });
+  weeklyOcc().forEach(o => { if(!o.paid) return; const a=+o.r.amount||0; add(o.r.payer,a); byCat.weekly+=a; split(byCatPerson.weekly,o.r.payer,a); });
+  const meDays = paydaysFor(cfg.meFreq,cfg.meAnchor), hisDays = paydaysFor(cfg.hisFreq,cfg.hisAnchor);
+  const pay = {me:+cfg.mePay||0, him:+cfg.hisPay||0};
+  const inc = {};
+  [["me",meDays],["him",hisDays]].forEach(([w,days])=>{
+    const o={got:0, gotN:0, est:0, estN:0};
+    days.forEach(dt=>{ const r=rcvFor(w,dt); if(r){o.got+=+r.amount||0;o.gotN++;} else {o.est+=pay[w];o.estN++;} });
+    inc[w]=o;
+  });
+  const income = {me: inc.me.got+inc.me.est, him: inc.him.got+inc.him.est};
+  const sv = savings.filter(s => (s.date||"").startsWith(key));
+  const saved = {me:0, him:0};
+  sv.forEach(s => split(saved, s.payer, +s.amount||0));
+  return {exp, spent, byCat, byCatPerson, income, inc, meDays, hisDays, sv, saved};
+}
+function weekDates(r){
+  // anchor date + 7 or 14 day steps; older items saved only a weekday
+  if(r.anchor) return payDates(r.anchor, r.freq==="biweekly"?14:7);
+  const out=[], last=new Date(view.y,view.m+1,0).getDate();
+  for(let d=1; d<=last; d++){ const x=new Date(view.y,view.m,d); if(x.getDay()===+r.weekday) out.push(x); }
+  return out;
+}
+const freqLabel = r => {
+  const DN=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const wd = r.anchor ? parseD(r.anchor).getDay() : +r.weekday;
+  return (r.freq==="biweekly" ? "Every other " : "Every ") + DN[wd];
+};
+function weeklyOcc(){
+  const out=[];
+  recurring.filter(r=>r.kind==="weekly").forEach(r=>weekDates(r).forEach(d=>{ const k=ymd(d); out.push({r, date:d, key:k, paid:!!(r.paid&&r.paid[k])}); }));
+  return out.sort((a,b)=>a.date-b.date);
+}
+function monthWeeks(){
+  // Monday-to-Sunday weeks, clipped to the month
+  const weeks=[], last=new Date(view.y,view.m+1,0).getDate();
+  let start=1;
+  for(let d=1; d<=last; d++){ const dow=new Date(view.y,view.m,d).getDay(); if(dow===0 || d===last){ weeks.push([start,d]); start=d+1; } }
+  return weeks;
+}
+const shortD = d => d.toLocaleDateString("en-PH",{month:"short",day:"numeric"});
+function split(o,payer,a){ if(!o) return; if(payer==="joint"){o.me+=a/2;o.him+=a/2;} else if(o[payer]!=null) o[payer]+=a; }
+
+function render(){
+  $("appTitle").textContent = cfg.title || "Our Household Budget"; document.title = cfg.title || "Household Budget Planner";
+  // don't redraw while someone is typing the amount they paid; live updates catch up after
+  if(paying && document.activeElement?.matches?.("form.paying input")) { clearTimeout(render._t); render._t=setTimeout(render,1500); return; }
+  $("mlabel").textContent = new Date(view.y,view.m,1).toLocaleDateString("en-PH",{month:"long",year:"numeric"});
+  ["ePayer","rPayer","wPayer","sPayer"].forEach(id=>{
+    const s=$(id), v=s.value;
+    s.innerHTML = `<option value="me">${esc(cfg.meName)}</option><option value="him">${esc(cfg.hisName)}</option><option value="joint">Both (split 50/50)</option>`;
+    if(v) s.value=v;
+  });
+  const d = monthData();
+  renderOverview(d); renderSpend(d); renderBills(); renderSavings(d); renderSettings(d);
+}
+
+function renderSavings(d){
+  const sel=$("sAcct"), v=sel.value;
+  sel.innerHTML = accounts.length ? accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("") : `<option value="">Add an account first</option>`;
+  if(v && accounts.some(a=>a.id===v)) sel.value=v;
+  let grand=0;
+  $("acctList").innerHTML = accounts.length ? accounts.map(a=>{
+    const bal = (+a.start||0) + savings.filter(s=>s.acct===a.id).reduce((t,s)=>t+(+s.amount||0),0);
+    grand += bal;
+    const goal = +a.goal||0, pct = goal>0 ? Math.max(0,Math.min(100,bal/goal*100)) : 0;
+    return `<div class="item" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="main" style="display:flex;flex-direction:column;gap:6px">
+        <div class="t">${esc(a.name)} ${a.example?'<span class="pill">example</span>':""}</div>
+        ${goal>0?`<div class="bar"><i style="width:${pct}%;background:var(--good)"></i></div><div class="s">${pct.toFixed(0)}% of ${peso(goal)} goal</div>`:`<div class="s">No goal set</div>`}
+      </div>
+      <div class="row" style="gap:2px;flex-wrap:nowrap;align-self:start"><span class="amt" style="font-size:1.05rem">${peso(bal)}</span><button class="del" data-delacct="${a.id}" aria-label="Delete ${esc(a.name)}">✕</button></div>
+    </div>`; }).join("") : `<div class="empty">No savings accounts yet. Add GCash GSave, Maya, SeaBank or any online bank below.</div>`;
+  $("svTotal").textContent = accounts.length ? "Total " + peso(grand) : "";
+  const net = d.sv.reduce((t,s)=>t+(+s.amount||0),0);
+  $("svMonth").textContent = d.sv.length ? (net>=0?"+":"−") + peso(Math.abs(net)) + " net" : "";
+  const acctName = id => accounts.find(a=>a.id===id)?.name || "Deleted account";
+  $("svList").innerHTML = d.sv.length ? d.sv.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{ const amt=+s.amount||0;
+    return `<div class="item"><span class="dot ${s.payer}"></span>
+      <div class="main"><div class="t">${amt>=0?"Deposit":"Withdrawal"} · ${esc(acctName(s.acct))} ${s.example?'<span class="pill">example</span>':""}</div>
+      <div class="s">${parseD(s.date).toLocaleDateString("en-PH",{month:"short",day:"numeric",weekday:"short"})} · ${esc(payerName(s.payer))}</div></div>
+      <div class="row" style="gap:2px;flex-wrap:nowrap"><span class="amt" style="color:${amt>=0?"var(--good)":"var(--bad)"}">${amt>=0?"+":"−"}${peso(Math.abs(amt))}</span><button class="del" data-delsv="${s.id}" aria-label="Delete">✕</button></div>
+    </div>`; }).join("") : `<div class="empty">Nothing saved yet this month.</div>`;
+}
+function renderOverview(d){
+  const card = (who, cls, n, days, label) => {
+    const inc=d.income[who], sp=d.spent[who], sv=d.saved[who], left=inc-sp-sv;
+    const pct = inc>0 ? Math.min(100, sp/inc*100) : (sp>0?100:0);
+    const pctS = inc>0 ? Math.max(0,Math.min(100-pct, sv/inc*100)) : 0;
+    return `<div class="person ${cls}">
+      <div class="name"><span class="dot ${cls}"></span>${esc(n)}<span class="pill">${label}</span></div>
+      <div><div class="label">Left this month</div><div class="big num" style="color:${left<0?"var(--bad)":"inherit"}">${peso(left)}</div></div>
+      <div class="bar" title="${pct.toFixed(0)}% spent, ${pctS.toFixed(0)}% saved"><i style="width:${pct}%;background:var(--${cls})"></i><i style="width:${pctS}%;background:var(--good)"></i></div>
+      <div class="kv">${(()=>{ const o=d.inc[who]; let h="";
+        if(o.gotN) h+=`<span>Salary received (${o.gotN} payday${o.gotN===1?"":"s"})</span><span>${peso(o.got)}</span>`;
+        if(o.estN) h+=`<span>${o.gotN?"Still expected":"Expected"} (${o.estN} payday${o.estN===1?"":"s"}, estimate)</span><span style="color:var(--muted)">${peso(o.est)}</span>`;
+        if(!days.length) h+=`<span>Salary</span><span>${peso(0)}</span>`;
+        return h; })()}
+      <span>Spent</span><span>${peso(sp)}</span>
+      <span>Saved</span><span style="color:var(--good)">${peso(sv)}</span></div></div>`;
+  };
+  $("people").innerHTML = card("me","me",cfg.meName,d.meDays,FREQ[cfg.meFreq]||"") + card("him","him",cfg.hisName,d.hisDays,FREQ[cfg.hisFreq]||"");
+  const total = Object.values(d.byCat).reduce((a,b)=>a+b,0);
+  $("totalSpent").textContent = "Total spent " + peso(total);
+  const max = Math.max(1,...Object.values(d.byCat));
+  $("cats").innerHTML = Object.keys(CAT).map(c=>{
+    const v=d.byCat[c], p=d.byCatPerson[c];
+    const wMe = v? (p.me/max*100):0, wHim = v? (p.him/max*100):0;
+    return `<div class="cat"><span>${CAT[c].label}</span><span class="amt">${peso(v)}</span>
+      <div class="bar"><i style="width:${wMe}%;background:var(--me)"></i><i style="width:${wHim}%;background:var(--him)"></i></div></div>`;
+  }).join("") + `<div class="row note"><span class="dot me"></span>${esc(cfg.meName)} <span class="dot him" style="margin-left:8px"></span>${esc(cfg.hisName)} <span style="margin-left:6px">· shared costs split 50/50</span></div>`;
+  const key=ymKey();
+  const un = recurring.filter(r=>r.kind!=="weekly" && !(r.paid&&r.paid[key])).sort((a,b)=>a.dueDay-b.dueDay);
+  const wkUn = weeklyOcc().filter(o=>!o.paid);
+  const left = un.reduce((a,r)=>a+(+r.amount||0),0) + wkUn.reduce((a,o)=>a+(+o.r.amount||0),0);
+  const bc = billCompare(), over = bc.paidSoFar - bc.paidBudget;
+  $("unpaidTotal").innerHTML = ((un.length||wkUn.length) ? peso(left) + " left" : "")
+    + (over>0.004 ? ` · <span style="color:var(--bad)">bills ${peso(over)} over budget</span>` : over<-0.004 ? ` · <span style="color:var(--good)">bills ${peso(-over)} under budget</span>` : "");
+  const wkRows = wkUn.map(o=>`<div class="item">
+    <button class="check" data-wpay="${o.r.id}|${o.key}" aria-label="Mark paid: ${esc(o.r.name)} ${shortD(o.date)}"></button>
+    <div class="main"><div class="t">${esc(o.r.name)}</div>
+      <div class="s row" style="gap:6px">${weekDue(o.date)}<span class="pill ${o.r.payer}">${esc(payerName(o.r.payer))}</span><span>${o.r.freq==="biweekly"?"Biweekly":"Weekly"}</span></div></div>
+    <span class="amt">${peso(+o.r.amount||0)}</span></div>`);
+  const rows = [...un.map(r=>({d:r.dueDay,h:recItem(r,"o")})), ...wkUn.map((o,i)=>({d:o.date.getDate(),h:wkRows[i]}))].sort((a,b)=>a.d-b.d);
+  $("unpaid").innerHTML = rows.length ? rows.map(x=>x.h).join("") : `<div class="empty">Everything's paid for this month.</div>`;
+}
+function weekDue(date){
+  const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const diff=Math.round((date-t0)/864e5);
+  if(diff<0) return `<span class="pill late">Overdue</span>`;
+  if(diff<=2) return `<span class="pill due">${diff===0?"Due today":"Due in "+diff+"d"}</span>`;
+  return `<span class="pill">Due ${shortD(date)}</span>`;
+}
+
+function dueState(r){
+  const key=ymKey();
+  if(r.paid && r.paid[key]) return `<span class="pill ok">Paid</span>`;
+  const last = new Date(view.y,view.m+1,0).getDate();
+  const due = new Date(view.y,view.m,Math.min(r.dueDay,last));
+  const t0 = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const diff = Math.round((due-t0)/864e5);
+  if(diff<0) return `<span class="pill late">Overdue</span>`;
+  if(diff<=5) return `<span class="pill due">${diff===0?"Due today":"Due in "+diff+"d"}</span>`;
+  return `<span class="pill">Due ${due.toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</span>`;
+}
+// paid[month] is true (old: paid the budget) or a number (the actual amount paid)
+function actualPaid(r, key){ const v = r.paid && r.paid[key]; if(v===true) return +r.amount||0; if(typeof v==="number") return v; return null; }
+function diffPill(actual, budget){
+  const d = Math.round((actual-budget)*100)/100;
+  if(d>0) return `<span class="pill late">${peso(d)} over</span>`;
+  if(d<0) return `<span class="pill ok">${peso(-d)} under</span>`;
+  return `<span class="pill">On budget</span>`;
+}
+let paying = null; // {id, where} while the "how much did you pay?" box is open
+function recItem(r, where="x"){
+  const key = ymKey(), act = actualPaid(r, key), on = act!=null, budget = +r.amount||0;
+  const open = paying && paying.id===r.id && paying.where===where;
+  const fid = `act-${where}-${r.id}`;
+  const form = open ? `<form class="paying" data-id="${r.id}" style="grid-column:1/-1;display:flex;gap:8px;align-items:end;flex-wrap:wrap;background:var(--chip);padding:10px;border-radius:10px">
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted);font-weight:600;flex:1 1 160px">How much did you actually pay? (₱)
+        <input id="${fid}" type="number" inputmode="decimal" min="0" step="0.01" value="${on?act:budget}" required></label>
+      <button class="btn primary sm" type="submit">Mark paid</button>
+      <button class="btn sm" type="button" data-cancelpay="1">Cancel</button>
+      <span class="note" style="flex-basis:100%">Budget is ${peso(budget)}. Change the amount if the bill came out higher or lower.</span>
+    </form>` : "";
+  return `<div class="item">
+    <button class="check ${on?"on":""}" data-pay="${r.id}" data-where="${where}" aria-label="${on?"Mark unpaid":"Mark paid"}: ${esc(r.name)}">${on?"✓":""}</button>
+    <div class="main"><div class="t">${esc(r.name)} ${r.example?'<span class="pill">example</span>':""}</div>
+      <div class="s row" style="gap:6px">${dueState(r)}${on?diffPill(act,budget):""}<span class="pill ${r.payer}">${esc(payerName(r.payer))}</span><span>${r.kind==="sub"?"Subscription":"Bill"} · day ${r.dueDay}</span></div></div>
+    <div class="row" style="gap:2px;flex-wrap:nowrap">
+      ${on ? `<button class="amt" style="border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:flex-end;padding:0" data-editpay="${r.id}" data-where="${where}" title="Change amount paid">${peso(act)}<span class="note" style="font-weight:500">budget ${peso(budget)}</span></button>`
+           : `<span class="amt" style="display:flex;flex-direction:column;align-items:flex-end">${peso(budget)}<span class="note" style="font-weight:500">budget</span></span>`}
+      <button class="del" data-delrec="${r.id}" aria-label="Delete ${esc(r.name)}">✕</button></div>
+    ${form}
+  </div>`;
+}
+function billCompare(){
+  const key = ymKey(), items = recurring.filter(r=>r.kind==="bill"||r.kind==="sub");
+  let budget=0, paidSoFar=0, paidBudget=0, expected=0;
+  const rows = items.slice().sort((a,b)=>a.dueDay-b.dueDay).map(r=>{
+    const b=+r.amount||0, a=actualPaid(r,key); budget+=b;
+    if(a!=null){ paidSoFar+=a; paidBudget+=b; expected+=a; } else expected+=b;
+    return {r,b,a};
+  });
+  return {rows, budget, paidSoFar, paidBudget, expected, diff: expected-budget};
+}
+
+function renderWeeks(d){
+  const occ = weeklyOcc().filter(o=>o.paid);
+  const ws = monthWeeks().map(([a,b])=>{
+    const inRange = day => day>=a && day<=b;
+    const p = d.exp.filter(e=>inRange(parseD(e.date).getDate())).reduce((s,e)=>s+(+e.amount||0),0);
+    const w = occ.filter(o=>inRange(o.date.getDate())).reduce((s,o)=>s+(+o.r.amount||0),0);
+    return {a,b,p,w,t:p+w};
+  });
+  const max = Math.max(1,...ws.map(x=>x.t));
+  $("weeks").innerHTML = ws.map((x,i)=>`<div class="cat">
+    <span>Week ${i+1} <span class="note">· ${shortD(new Date(view.y,view.m,x.a))}${x.a!==x.b?"–"+new Date(view.y,view.m,x.b).getDate():""}</span></span>
+    <span class="amt">${peso(x.t)}</span>
+    <div class="bar"><i style="width:${x.p/max*100}%;background:var(--me)"></i><i style="width:${x.w/max*100}%;background:var(--good)"></i></div></div>`).join("")
+    + `<div class="row note"><span class="dot me"></span>Purchases <span class="dot" style="background:var(--good);margin-left:8px"></span>Weekly &amp; biweekly</div>`;
+}
+function renderWeekly(){
+  const items = recurring.filter(r=>r.kind==="weekly");
+  const DN=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let monthTotal=0;
+  $("wkList").innerHTML = items.length ? items.map(r=>{
+    const ds = weekDates(r); monthTotal += ds.length*(+r.amount||0);
+    const chips = ds.map(d=>{ const k=ymd(d), on=!!(r.paid&&r.paid[k]);
+      return `<button class="seg-chip pill ${on?"ok":""}" style="border:0;cursor:pointer" data-wpay="${r.id}|${k}" aria-pressed="${on}">${on?"✓ ":""}${shortD(d)}</button>`; }).join("");
+    return `<div class="item" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="main" style="display:flex;flex-direction:column;gap:6px">
+        <div class="t">${esc(r.name)} ${r.example?'<span class="pill">example</span>':""}</div>
+        <div class="s row" style="gap:6px"><span class="pill ${r.payer}">${esc(payerName(r.payer))}</span><span class="pill">${r.freq==="biweekly"?"Biweekly":"Weekly"}</span><span>${freqLabel(r)} · ${ds.length}× this month</span></div>
+        <div class="paydays">${chips}</div></div>
+      <div class="row" style="gap:2px;flex-wrap:nowrap;align-self:start"><span class="amt">${peso(+r.amount||0)}<span class="note">${r.freq==="biweekly"?"/2 wks":"/wk"}</span></span><button class="del" data-delrec="${r.id}" aria-label="Delete ${esc(r.name)}">✕</button></div>
+    </div>`; }).join("") : `<div class="empty">No weekly or biweekly expenses yet. Add groceries, gas or allowance above.</div>`;
+  $("wkSum").textContent = items.length ? peso(monthTotal)+" this month" : "";
+}
+function renderSpend(d){
+  renderWeeks(d);
+  const rows = d.exp.filter(e=>filter==="all"||e.cat===filter).sort((a,b)=>b.date.localeCompare(a.date));
+  $("expList").innerHTML = rows.length ? rows.map(e=>`<div class="item">
+      <span class="dot ${e.payer}"></span>
+      <div class="main"><div class="t">${esc(e.note)} ${e.example?'<span class="pill">example</span>':""}</div>
+      <div class="s">${parseD(e.date).toLocaleDateString("en-PH",{month:"short",day:"numeric",weekday:"short"})} · ${CAT[e.cat]?.label||e.cat} · ${esc(payerName(e.payer))}</div></div>
+      <div class="row" style="gap:2px;flex-wrap:nowrap"><span class="amt">${peso(+e.amount||0)}</span><button class="del" data-delexp="${e.id}" aria-label="Delete">✕</button></div>
+    </div>`).join("") : `<div class="empty">No purchases logged for this month yet. Add one above.</div>`;
+}
+
+function renderCompare(){
+  const c = billCompare();
+  if(!c.rows.length){ $("cmpStats").innerHTML=""; $("cmpTable").innerHTML=`<div class="empty">Add a bill or subscription above to compare your budget with what you paid.</div>`; return; }
+  const dTxt = c.diff>0.004 ? `<span style="color:var(--bad)">${peso(c.diff)} over</span>` : c.diff<-0.004 ? `<span style="color:var(--good)">${peso(-c.diff)} under</span>` : "On budget";
+  $("cmpStats").innerHTML = `
+    <div><div class="label">Budget</div><div class="big num" style="font-size:1.35rem">${peso(c.budget)}</div></div>
+    <div><div class="label">Paid so far</div><div class="big num" style="font-size:1.35rem">${peso(c.paidSoFar)}</div></div>
+    <div><div class="label">Expected total</div><div class="big num" style="font-size:1.35rem">${peso(c.expected)}</div></div>
+    <div><div class="label">Vs budget</div><div class="big num" style="font-size:1.35rem">${dTxt}</div></div>`;
+  $("cmpTable").innerHTML = `<table class="cmp num"><thead><tr><th>Bill</th><th>Budget</th><th>Actual</th><th>Difference</th></tr></thead><tbody>
+    ${c.rows.map(({r,b,a})=>{ const d=a==null?null:a-b;
+      return `<tr><td>${esc(r.name)}${r.kind==="sub"?' <span class="note">sub</span>':""}</td><td>${peso(b)}</td>
+        <td>${a==null?'<span class="note">not paid yet</span>':peso(a)}</td>
+        <td style="color:${d==null?"var(--muted)":d>0.004?"var(--bad)":d<-0.004?"var(--good)":"inherit"}">${d==null?"—":(d>0.004?"+":d<-0.004?"−":"")+peso(Math.abs(d))}</td></tr>`; }).join("")}
+    </tbody><tfoot><tr><td>Total</td><td>${peso(c.budget)}</td><td>${peso(c.paidSoFar)}</td><td style="color:${c.paidSoFar-c.paidBudget>0.004?"var(--bad)":c.paidSoFar-c.paidBudget<-0.004?"var(--good)":"inherit"}">${(()=>{const d=c.paidSoFar-c.paidBudget;return (d>0.004?"+":d<-0.004?"−":"")+peso(Math.abs(d));})()}</td></tr></tfoot></table>`;
+}
+function renderBills(){
+  const sort = a => a.slice().sort((x,y)=>x.dueDay-y.dueDay);
+  renderWeekly();
+  const bills = sort(recurring.filter(r=>r.kind==="bill")), subs = sort(recurring.filter(r=>r.kind==="sub"));
+  const sum = a => peso(a.reduce((s,r)=>s+(+r.amount||0),0)) + " budget / month";
+  $("billSum").textContent = sum(bills); $("subSum").textContent = sum(subs);
+  renderCompare();
+  $("billList").innerHTML = bills.length ? bills.map(r=>recItem(r,"b")).join("") : `<div class="empty">No bills yet. Add electricity, water, rent, internet above.</div>`;
+  $("subList").innerHTML = subs.length ? subs.map(r=>recItem(r,"b")).join("") :`<div class="empty">No subscriptions yet. Add Netflix, Spotify, iCloud and the like above.</div>`;
+  $("exRow").hidden = !(recurring.some(r=>r.example) || expenses.some(e=>e.example));
+}
+
+function renderSettings(d){
+  if(document.activeElement?.closest?.("#cfgForm")==null){
+    $("cMeName").value=cfg.meName; $("cHimName").value=cfg.hisName;
+    $("cMePay").value=cfg.mePay||""; $("cHimPay").value=cfg.hisPay||"";
+    $("cMeAnchor").value=cfg.meAnchor||""; $("cHimAnchor").value=cfg.hisAnchor||"";
+    $("cMeCur").value=cfg.meCur||""; $("cHimCur").value=cfg.hisCur||"";
+    $("cMeFreq").value=cfg.meFreq||"weekly"; $("cHimFreq").value=cfg.hisFreq||"biweekly"; $("cTitle").value=cfg.title||"";
+  }
+  $("rcvTotal").textContent = peso(d.inc.me.got + d.inc.him.got) + " received";
+  if($("payInfo").contains(document.activeElement)) return; // don't wipe what someone is typing
+
+  const rows = (who, days) => days.length ? days.map(dt=>{
+    const r = rcvFor(who, dt), k = who+"-"+ymd(dt), usual = who==="me"?cfg.mePay:cfg.hisPay;
+    const fut = dt > today;
+    const pill = r ? `<span class="pill ok">Received</span>` : fut ? `<span class="pill">Upcoming</span>` : `<span class="pill due">Not entered</span>`;
+    const cur = esc(((who==="me"?cfg.meCur:cfg.hisCur)||"").toUpperCase());
+    const fx = cur ? `
+      <label>Amount in ${cur}<input id="fx-${k}" data-fx="${k}" type="number" inputmode="decimal" min="0" step="0.01" value="${r?.fx??""}"></label>
+      <label>Rate (₱ per ${cur})<input id="rate-${k}" data-rate="${k}" type="number" inputmode="decimal" min="0" step="0.0001" value="${r?.rate??""}"></label>` : "";
+    return `<form class="add rcv" data-who="${who}" data-date="${ymd(dt)}" style="border-top:1px solid var(--line);padding-top:10px">
+      <div style="grid-column:1/-1" class="row spread"><b>${dt.toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</b>${pill}</div>
+      ${fx}
+      <label>Received (₱)<input id="php-${k}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="usual ${usual?peso(usual):"amount"}" value="${r?.amount??""}"></label>
+      <label>Note<input id="note-${k}" placeholder="e.g. bonus, overtime" value="${esc(r?.note??"")}"></label>
+      <div class="row" style="gap:6px"><button class="btn primary sm" type="submit">${r?"Update":"Save"}</button>${r?`<button class="btn sm" type="button" data-unrcv="${k}">Clear</button>`:""}</div>
+    </form>`; }).join("") : `<div class="empty">Set a payday in Salary setup below to see the dates.</div>`;
+  const head = (who, cls, name, o) => `<div class="name row spread"><span class="row"><span class="dot ${cls}"></span><b>${esc(name)}</b></span><span class="note num">${peso(o.got)} received${o.estN?` · ${o.estN} to go`:""}</span></div>`;
+  $("payInfo").innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">${head("me","me",cfg.meName,d.inc.me)}${rows("me",d.meDays)}</div>
+    <div style="display:flex;flex-direction:column;gap:10px">${head("him","him",cfg.hisName,d.inc.him)}${rows("him",d.hisDays)}</div>`;
+}
+
+/* ---------- storage ---------- */
+const local = {
+  load(){ try{ const s=JSON.parse(localStorage.getItem("budget-local")||"null"); if(s){cfg={...DEFAULT_CFG,...s.cfg};expenses=s.expenses||[];recurring=s.recurring||[];savings=s.savings||[];accounts=s.accounts||[];received=s.received||[];} }catch(e){} },
+  save(){ try{ localStorage.setItem("budget-local",JSON.stringify({cfg,expenses,recurring,savings,accounts,received})); }catch(e){} }
+};
+const uid = () => Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+
+async function saveCfg(c){ cfg={...cfg,...c}; render(); if(live) await db.doc("config/main").set(cfg); else local.save(); }
+async function addExpense(e){ const id=uid(); if(live) await db.collection("expenses").doc(id).set(e); else { expenses.push({id,...e}); local.save(); render(); } }
+async function addRec(r){ const id=uid(); if(live) await db.collection("recurring").doc(id).set(r); else { recurring.push({id,...r}); local.save(); render(); } }
+async function delExp(id){ if(live) await db.collection("expenses").doc(id).delete(); else { expenses=expenses.filter(e=>e.id!==id); local.save(); render(); } }
+async function addTo(col, arr, item){ const id=uid(); if(live) await db.collection(col).doc(id).set(item); else { arr.push({id,...item}); local.save(); render(); } }
+async function delFrom(col, name, id){ if(live) await db.collection(col).doc(id).delete(); else { if(name==="savings") savings=savings.filter(x=>x.id!==id); else accounts=accounts.filter(x=>x.id!==id); local.save(); render(); } }
+async function saveRcv(k, item){
+  if(live) await db.collection("received").doc(k).set(item);
+  else { received = received.filter(x=>x.id!==k); received.push({id:k,...item}); local.save(); }
+}
+async function clearRcv(k){
+  if(live) await db.collection("received").doc(k).delete();
+  else { received = received.filter(x=>x.id!==k); local.save(); }
+}
+async function delRec(id){ if(live) await db.collection("recurring").doc(id).delete(); else { recurring=recurring.filter(e=>e.id!==id); local.save(); render(); } }
+async function setPaid(id, value){
+  // value: a number = actual amount paid, false = not paid
+  const r=recurring.find(x=>x.id===id); if(!r) return; const key=ymKey();
+  if(live) await db.collection("recurring").doc(id).update({paid:{[key]:value}});
+  else { r.paid={...(r.paid||{}),[key]:value}; local.save(); render(); }
+}
+async function toggleWeek(id, k){
+  const r=recurring.find(x=>x.id===id); if(!r) return; const on=!(r.paid&&r.paid[k]);
+  if(live) await db.collection("recurring").doc(id).update({paid:{[k]:on}});
+  else { r.paid={...(r.paid||{}),[k]:on}; local.save(); render(); }
+}
+function openPaying(id, where){
+  paying = {id, where}; render();
+  const inp = $(`act-${where}-${id}`); if(inp){ inp.focus(); inp.select?.(); }
+}
+document.addEventListener("click", e=>{
+  const ed = e.target.closest("[data-editpay]"); if(ed){ openPaying(ed.dataset.editpay, ed.dataset.where); return; }
+  if(e.target.closest("[data-cancelpay]")){ paying=null; render(); }
+});
+document.addEventListener("submit", e=>{
+  const f = e.target.closest("form.paying"); if(!f) return; e.preventDefault();
+  const id = f.dataset.id, inp = $(`act-${paying?.where}-${id}`), v = parseFloat(inp?.value);
+  if(!(v>=0)){ toast("Enter the amount you paid"); return; }
+  paying = null; document.activeElement?.blur?.();
+  guard(async ()=>{ await setPaid(id, Math.round(v*100)/100); render();
+    const r = recurring.find(x=>x.id===id), d = v - (+r?.amount||0);
+    toast(d>0.004 ? `Paid. ${peso(d)} over budget` : d<-0.004 ? `Paid. ${peso(-d)} under budget` : "Paid, right on budget"); })();
+});
+const guard = fn => async (...a) => { try{ await fn(...a); }catch(err){ toast(err?.code==="invalid_argument"?"You have view-only access, so changes can't be saved.":"Couldn't save. Try again."); } };
+
+/* ---------- events ---------- */
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  tab=b.dataset.tab;
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["overview","spend","bills","savings","settings"].forEach(t=>{ const s=$("v-"+t); s.hidden = t!==tab; if(t===tab) s.style.display="flex"; });
+});
+$("prev").onclick=()=>{ view.m--; if(view.m<0){view.m=11;view.y--;} render(); };
+$("next").onclick=()=>{ view.m++; if(view.m>11){view.m=0;view.y++;} render(); };
+$("filt").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; filter=b.dataset.f; $("filt").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b)); render(); };
+$("eDate").value = ymd(today); $("wStart").value = ymd(today); $("sDate").value = ymd(today);
+$("payInfo").addEventListener("input", e=>{
+  const k = e.target.dataset.fx || e.target.dataset.rate; if(!k) return;
+  const fx = +$("fx-"+k).value, rate = +$("rate-"+k).value;
+  if(fx>0 && rate>0) $("php-"+k).value = (Math.round(fx*rate*100)/100).toFixed(2);
+});
+$("payInfo").addEventListener("submit", guard(async e=>{
+  const f = e.target.closest("form.rcv"); if(!f) return; e.preventDefault();
+  const who=f.dataset.who, date=f.dataset.date, k=who+"-"+date;
+  const amt = parseFloat($("php-"+k).value);
+  if(!(amt>=0) || $("php-"+k).value===""){ toast("Enter the amount received in pesos"); return; }
+  const item = {who, date, amount:amt};
+  if($("fx-"+k)){ const fx=parseFloat($("fx-"+k).value), rate=parseFloat($("rate-"+k).value); if(fx>0) item.fx=fx; if(rate>0) item.rate=rate; }
+  if($("note-"+k)) item.note = $("note-"+k).value.trim();
+  document.activeElement?.blur?.();
+  await saveRcv(k, item); render(); toast("Salary saved");
+}));
+$("payInfo").addEventListener("click", guard(async e=>{
+  const b = e.target.closest("[data-unrcv]"); if(!b) return;
+  document.activeElement?.blur?.();
+  await clearRcv(b.dataset.unrcv); render(); toast("Cleared");
+}));
+$("svForm").onsubmit =guard(async e=>{ e.preventDefault();
+  if(!$("sAcct").value){ toast("Add a savings account first"); return; }
+  const amt = +$("sAmt").value * ($("sType").value==="out" ? -1 : 1);
+  await addTo("savings", savings, {acct:$("sAcct").value, amount:amt, date:$("sDate").value, payer:$("sPayer").value});
+  $("sAmt").value=""; toast(amt>=0?"Deposit saved":"Withdrawal saved"); });
+$("acctForm").onsubmit = guard(async e=>{ e.preventDefault();
+  await addTo("accounts", accounts, {name:$("aName").value.trim(), start:+$("aStart").value||0, goal:+$("aGoal").value||0});
+  $("aName").value=""; $("aStart").value="0"; $("aGoal").value=""; toast("Account added"); });
+$("expForm").onsubmit = guard(async e=>{ e.preventDefault();
+  await addExpense({note:$("eNote").value.trim(), amount:+$("eAmt").value, date:$("eDate").value, cat:$("eCat").value, payer:$("ePayer").value, at:Date.now()});
+  $("eNote").value=""; $("eAmt").value=""; toast("Purchase added"); });
+$("recForm").onsubmit = guard(async e=>{ e.preventDefault();
+  await addRec({name:$("rName").value.trim(), amount:+$("rAmt").value, dueDay:Math.min(31,Math.max(1,+$("rDay").value||1)), kind:$("rKind").value, payer:$("rPayer").value, paid:{}});
+  $("rName").value=""; $("rAmt").value=""; toast("Added"); });
+$("wkForm").onsubmit = guard(async e=>{ e.preventDefault();
+  await addRec({name:$("wName").value.trim(), amount:+$("wAmt").value, anchor:$("wStart").value, freq:$("wFreq").value, kind:"weekly", payer:$("wPayer").value, paid:{}});
+  $("wName").value=""; $("wAmt").value=""; toast("Weekly expense added"); });
+$("cfgForm").onsubmit = guard(async e=>{ e.preventDefault();
+  await saveCfg({meName:$("cMeName").value.trim()||"Me", hisName:$("cHimName").value.trim()||"Partner", mePay:+$("cMePay").value||0, hisPay:+$("cHimPay").value||0, meAnchor:$("cMeAnchor").value, hisAnchor:$("cHimAnchor").value, meCur:$("cMeCur").value.trim().toUpperCase(), hisCur:$("cHimCur").value.trim().toUpperCase(), meFreq:$("cMeFreq").value, hisFreq:$("cHimFreq").value, title:$("cTitle").value.trim()||"Our Household Budget"});
+  document.activeElement?.blur?.(); toast("Salaries saved"); });
+document.addEventListener("click", guard(async e=>{
+  const t=e.target.closest("[data-pay],[data-wpay],[data-delexp],[data-delrec],[data-delsv],[data-delacct]"); if(!t) return;
+  if(t.dataset.delsv) await delFrom("savings","savings",t.dataset.delsv);
+  if(t.dataset.delacct) await delFrom("accounts","accounts",t.dataset.delacct);
+  if(t.dataset.pay){
+    const r = recurring.find(x=>x.id===t.dataset.pay);
+    if(r && actualPaid(r, ymKey())!=null){ paying=null; await setPaid(r.id, false); toast("Marked unpaid"); }
+    else openPaying(t.dataset.pay, t.dataset.where);
+  }
+  if(t.dataset.wpay){ const [id,k]=t.dataset.wpay.split("|"); await toggleWeek(id,k); }
+  if(t.dataset.delexp) await delExp(t.dataset.delexp);
+  if(t.dataset.delrec) await delRec(t.dataset.delrec);
+}));
+$("clearEx").onclick = guard(async ()=>{
+  for(const r of recurring.filter(x=>x.example)) await delRec(r.id);
+  for(const x of expenses.filter(x=>x.example)) await delExp(x.id);
+  toast("Examples removed");
+});
+
+/* ---------- backup ---------- */
+$("bkDown").onclick = ()=>{
+  const data = JSON.stringify({app:"household-budget", version:1, saved:new Date().toISOString(), cfg, expenses, recurring, savings, accounts, received}, null, 1);
+  const url = URL.createObjectURL(new Blob([data],{type:"application/json"}));
+  const a = document.createElement("a"); a.href=url; a.download="budget-backup-"+ymd(new Date())+".json";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast("Backup downloaded");
+};
+let pendingRestore = null;
+$("bkFile").onchange = async e=>{
+  const f = e.target.files[0]; e.target.value=""; if(!f) return;
+  try{ const d = JSON.parse(await f.text()); if(d.app!=="household-budget") throw 0; pendingRestore=d; $("bkConfirm").hidden=false; }
+  catch(_){ toast("That file isn't a planner backup"); }
+};
+$("bkNo").onclick = ()=>{ pendingRestore=null; $("bkConfirm").hidden=true; };
+$("bkYes").onclick = ()=>{
+  const d = pendingRestore; if(!d) return;
+  cfg={...DEFAULT_CFG,...(d.cfg||{})}; expenses=d.expenses||[]; recurring=d.recurring||[]; savings=d.savings||[]; accounts=d.accounts||[]; received=d.received||[];
+  local.save(); pendingRestore=null; $("bkConfirm").hidden=true; render(); toast("Backup restored");
+};
+
+/* ---------- boot ---------- */
+local.load(); render();
+$("status").textContent = "Saved on this phone. Download a backup from the Salaries tab now and then.";
+if("serviceWorker" in navigator) addEventListener("load", ()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
